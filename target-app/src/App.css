@@ -1,0 +1,262 @@
+/* ============================================================
+   App レイアウト
+   ============================================================ */
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
+
+/* ---- Header ---- */
+.app__header {
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.app__title {
+  font-size: 2rem;
+  letter-spacing: -0.5px;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.app__date {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+/* ---- Main ---- */
+.app__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ============================================================
+   AddHabitForm
+   ============================================================ */
+.add-habit-form {
+  background: var(--color-card);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+}
+
+.add-habit-form__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-2);
+}
+
+.add-habit-form__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.add-habit-form__input {
+  flex: 1;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 1rem;
+  padding: var(--space-2) var(--space-3);
+  transition: border-color 0.15s;
+}
+
+.add-habit-form__input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.add-habit-form__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.add-habit-form__submit {
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #0F172A;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: var(--space-2) var(--space-4);
+  transition: opacity 0.15s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.add-habit-form__submit:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.add-habit-form__submit:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.add-habit-form__submit:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* ============================================================
+   HabitCard
+   ============================================================ */
+.habit-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.habit-card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  transition: border-color 0.2s;
+}
+
+.habit-card--done {
+  border-color: var(--color-success);
+}
+
+.habit-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.habit-card__name {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: var(--space-1);
+}
+
+.habit-card__streak {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.habit-card__streak-count {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-warning);
+  line-height: 1;
+}
+
+.habit-card__streak-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.habit-card__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* 達成トグルボタン */
+.habit-card__toggle {
+  background: transparent;
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.habit-card__toggle:hover {
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.habit-card__toggle--done {
+  background: var(--color-success);
+  border-color: var(--color-success);
+  color: #0F172A;
+}
+
+.habit-card__toggle--done:hover {
+  background: rgba(52, 211, 153, 0.8);
+  border-color: rgba(52, 211, 153, 0.8);
+}
+
+/* 削除ボタン */
+.habit-card__remove {
+  background: transparent;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.habit-card__remove:hover {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+/* ============================================================
+   EmptyState
+   ============================================================ */
+.empty-state {
+  background: var(--color-card);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.empty-state__message {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   レスポンシブ
+   ============================================================ */
+@media (max-width: 480px) {
+  .habit-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .habit-card__actions {
+    width: 100%;
+  }
+
+  .habit-card__toggle,
+  .habit-card__remove {
+    flex: 1;
+    text-align: center;
+  }
+
+  .add-habit-form__row {
+    flex-direction: column;
+  }
+
+  .add-habit-form__submit {
+    width: 100%;
+  }
+}
