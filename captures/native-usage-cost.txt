@@ -1,0 +1,71 @@
+================================================================
+Claude Code ネイティブ /cost ・ /usage の実出力（PII 伏字化済み）
+----------------------------------------------------------------
+目的: Splunk(OTel) と「何が出て何が出ないか」を実物で比較する。
+取得: Claude Code TUI で /cost / /usage を実行（2026-06, Asia/Tokyo）。
+重要な観測:
+  - /cost と /usage は同一画面に統合されている（タブ: Settings/Status/Config/Usage/Stats）。
+  - 日付トグル(d=day / w=week)は効かず "Last 24h" 固定だった。
+  - skills/subagents は出るが「% of usage」のみ。実額($)・実トークンは出ない。
+  - 画面自身が "these are independent characteristics of your usage, not a breakdown"
+    （＝内訳ではない）と明記し、"Approximate, based on local sessions on this machine" と断る。
+================================================================
+
+
+########## /cost = /usage 画面の実出力（Session ブロック）##########
+# モデル別までは出る。subagent別・skill別の "金額" 行は無い。
+
+ Session
+   Total cost:            $4.09
+   Total duration (API):  10m 57s
+   Total duration (wall): 33m 58s
+   Total code changes:    146 lines added, 3 lines removed
+   Usage by model:
+     claude-opus-4-8:   22.6k input, 39.0k output, 2.0m cache read, 263.7k cache write ($4.02)
+     claude-haiku-4-5:  39.7k input, 891 output, 0 cache read, 0 cache write, 2 web search ($0.0641)
+
+ session   ██████                        24% used
+ week (all models)
+           ████████████████████████▌     63% used   (reset: Jun 26, 3am Asia/Tokyo)
+
+
+########## 同画面下部: limits 按分（"What's contributing to your limits usage?"）##########
+# Approximate, based on local sessions on this machine
+# — does not include other devices or claude.ai
+# Last 24h ・ "these are independent characteristics of your usage, NOT a breakdown"
+
+ 19% of your usage was at >150k context
+
+ Skills                  % of usage
+   /quality-gate                 2%
+   /commit-convention            1%
+
+ Subagents               % of usage
+   commit-convention             2%   <- 注: skill名が Subagents 欄に混入（近似按分）
+   frontend-dev                  1%
+
+ d to day · w to week   (※実機ではトグルが効かず Last 24h 固定)
+ Usage credits are off · /usage-credits to turn them on
+
+
+================================================================
+所見:
+- /cost で出た粒度        : セッション合計 + "Usage by model"（モデル別の $ とトークン）まで。
+- /usage で subagent は出たか: 出た。ただし "% of usage" のみ（$/トークン無し）。さらに
+                              Subagents 欄に skill 名(commit-convention)が混入し近似的。
+                              frontend-dev は 1% = 直近24hの大半がこの分析セッションに食われ、
+                              A/Bビルドの subagent コストとして isolate できていない。
+- /usage で skill は出たか  : 出た。/quality-gate 2% / /commit-convention 1%（% のみ）。
+- 実額($)が出るか / %のみか : skill/subagent は %のみ。$ はモデル別とセッション合計のみ。
+- A/B(run)で分けられるか    : 不可。run=quality / run=cost という自分で付けた次元の概念が無い。
+- 期間を選べるか            : 不可だった。"Last 24h" 固定（d/w トグルが効かず）。週/任意期間に切れない。
+- このマシン限定か          : はい。"local sessions on this machine, does not include other devices"。
+- トレース(waterfall)は見えるか: 見えない。委譲スパン/ネストの概念なし。
+- 画面の自己申告            : "Approximate" かつ "not a breakdown"（＝正確な内訳ではないと明言）。
+
+結論: ネイティブ /cost・/usage では「特定の Agent / Skill の "実コスト・実トークン" を、
+      測定対象だけ isolate して、A/B で並べて」見ることはできない。出るのは
+      直近24h・このマシン・近似%の "not a breakdown"。
+      → OTel を Splunk に送って初めて: run別の実額、agent.name×model の分離、
+        skill.name 別の実トークン、委譲トレースの waterfall が得られる。
+================================================================
