@@ -25,6 +25,12 @@
   "lines_of_code_count":   { "quality": 1675, "cost": 1607 },
   "session_count":         { "quality": 2, "cost": 1, "_note": "quality の2はビルド本体+着弾確認の1+1" },
   "commit_count":          { "quality": 1, "cost": 1 },
+  "skill_name_dimension": {
+    "_note": "メトリクスに skill.name dimension が付く。能動invokeの quality-gate だけでなく preload知識skillも出た。",
+    "quality-gate (能動invoke)":      "quality / cost 両方",
+    "commit-convention (preload)":    "cost (3 MTS)",
+    "design-system (preload)":        "cost (1 MTS)"
+  },
   "apm_spans_cost_run": {
     "_note": "cost ランのトレースを Collector debug で捕捉(quality ランは Splunk APM 側にのみ存在)",
     "agent_delegation_spans": 4,

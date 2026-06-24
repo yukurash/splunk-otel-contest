@@ -53,6 +53,17 @@
 最長の `Agent` スパン（424s）が tech-lead → frontend-dev の実装委譲で、その内側に
 sonnet の `llm_request` と多数の `Bash`/`tool` がぶら下がる**ネスト waterfall** を形成する。
 
+## skill.name dimension（preload も可視化された）
+
+| skill.name | 種別 | 観測 |
+|------------|------|------|
+| `quality-gate` | 能動 invoke | quality / cost 両方で出現 |
+| `commit-convention` | preload 知識 | cost で出現（3 MTS）|
+| `design-system` | preload 知識 | cost で出現 |
+
+メトリクスに `skill.name` dimension が付くため、Splunk で skill 別にコスト/トークンを切れる。
+事前に「preload skill は出ないかも」と踏んでいたが、**preload skill も出た**のは収穫。
+
 ## 品質ゲート（quality ラン）
 
 | 項目 | 結果 |
