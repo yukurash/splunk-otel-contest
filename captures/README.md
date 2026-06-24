@@ -9,7 +9,10 @@ Splunk Web UI のスクリーンショットの代わりに、同じデータを
 |----------|------|
 | [`signalflow-aggregates.json`](./signalflow-aggregates.json) | SignalFlow API で取得した A/B 集計（コスト/トークン/所要時間/行数/スパン数）。PII なし。 |
 | [`ab-summary.md`](./ab-summary.md) | 上記を表に整形した A/B 比較。記事用のメイン結果。 |
+| [`agent-skill-breakdown.md`](./agent-skill-breakdown.md) | `agent.name × model × skill.name` で切ったエージェント別・スキル別コスト/トークン。 |
+| [`native-usage-cost.txt`](./native-usage-cost.txt) | ネイティブ `/usage`・`/cost` の実出力。Splunk と何が違うか（%のみ・not a breakdown 等）の実証。 |
 | [`telemetry-sample-redacted.txt`](./telemetry-sample-redacted.txt) | Collector が受信した生メトリクス＋トレース span の実サンプル（user.email/id・OSパス等を `<redacted>` 化）。 |
+| [`splunk-provisioned.json`](./splunk-provisioned.json) | API で作成した実ダッシュボード/ディテクタの ID と URL（秘密なし）。`scripts/provision-splunk.mjs` の成果物。 |
 
 ## Splunk Web UI で同じものを見るには
 
@@ -24,3 +27,13 @@ Splunk Web UI のスクリーンショットの代わりに、同じデータを
 # realm/token は collector/.env から読む
 node scripts/fetch-aggregates.mjs   # → signalflow-aggregates.json を再生成
 ```
+
+## ダッシュボード/ディテクタの作成・撤去（observability-as-code）
+
+```bash
+node scripts/provision-splunk.mjs            # ダッシュボード+チャート6+ディテクタを作成
+node scripts/provision-splunk.mjs --destroy  # 上記を全削除
+```
+
+作成後の URL は `splunk-provisioned.json` に保存される。スクショはこの URL を開いて撮る
+（A/B ダッシュボード / ディテクタ）。
