@@ -1,0 +1,9 @@
+services:
+  otelcollector:
+    image: quay.io/signalfx/splunk-otel-collector:latest
+    command: ["--config=/etc/otel/config.yaml"]
+    environment:
+      - SPLUNK_ACCESS_TOKEN=${SPLUNK_ACCESS_TOKEN}
+      - SPLUNK_REALM=${SPLUNK_REALM}
+    ports: ["4317:4317", "4318:4318"]
+    volumes: ["./config.yaml:/etc/otel/config.yaml:ro"]

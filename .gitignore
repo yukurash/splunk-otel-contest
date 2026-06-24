@@ -1,0 +1,27 @@
+# --- secrets: 絶対にコミットしない ---
+collector/.env
+.env
+.env.local
+*.token
+
+# --- node / build ---
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# --- 生成物 ---
+target-app/lighthouse.json
+target-app*/lighthouse.json
+*.lighthouseci/
+coverage/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Claude Code ローカル設定（共有しない） ---
+.claude/settings.local.json
