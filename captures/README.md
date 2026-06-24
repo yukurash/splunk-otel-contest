@@ -11,6 +11,7 @@ Splunk Web UI のスクリーンショットの代わりに、同じデータを
 | [`ab-summary.md`](./ab-summary.md) | 上記を表に整形した A/B 比較。記事用のメイン結果。 |
 | [`agent-skill-breakdown.md`](./agent-skill-breakdown.md) | `agent.name × model × skill.name` で切ったエージェント別・スキル別コスト/トークン。 |
 | [`native-usage-cost.txt`](./native-usage-cost.txt) | ネイティブ `/usage`・`/cost` の実出力。Splunk と何が違うか（%のみ・not a breakdown 等）の実証。 |
+| [`api-request-events-redacted.txt`](./api-request-events-redacted.txt) | イベント層 `claude_code.api_request` の実捕捉。`cost_usd`＋`prompt.id` で1指示のファンアウト($0.106/3req)を可視化。 |
 | [`telemetry-sample-redacted.txt`](./telemetry-sample-redacted.txt) | Collector が受信した生メトリクス＋トレース span の実サンプル（user.email/id・OSパス等を `<redacted>` 化）。 |
 | [`splunk-provisioned.json`](./splunk-provisioned.json) | API で作成した実ダッシュボード/ディテクタの ID と URL（秘密なし）。`scripts/provision-splunk.mjs` の成果物。 |
 

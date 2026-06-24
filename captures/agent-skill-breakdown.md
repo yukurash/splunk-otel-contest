@@ -73,7 +73,7 @@
 | 層 | 設定 | 何が得られるか | 本企画 |
 |----|------|----------------|--------|
 | メトリクス | `OTEL_METRICS_EXPORTER` | agent.name × skill.name × query_source × model の**集計**。ダッシュボード向き | ✅ 取得 |
-| イベント | `OTEL_LOGS_EXPORTER` | `api_request` の `cost_usd`＋属性＋`prompt.id`。**リクエスト単位の実コスト明細**・監査向き | ⚠️ 未設定（取得せず）|
+| イベント | `OTEL_LOGS_EXPORTER` | `api_request` の `cost_usd`＋属性＋`prompt.id`。**リクエスト単位の実コスト明細**・監査向き | ✅ 取得（[`api-request-events-redacted.txt`](./api-request-events-redacted.txt)）|
 | トレース(beta) | `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` + `OTEL_TRACES_EXPORTER` | `agent_id` / `query_source` / per-span トークン。**同一モデルの custom subagent を分離＋waterfall** | ✅ 取得 |
 
 > 注: 直接 Anthropic API 認証時のみ `claude_code.cost.usage` が機能する。
