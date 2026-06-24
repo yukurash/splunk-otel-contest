@@ -1,0 +1,37 @@
+{
+  "_note": "Splunk Observability Cloud (realm jp0) から SignalFlow API で取得した実測集計。PII なし。claude_code.* は SignalFx COUNTER(デルタ)型のため rollup='sum' で全期間を合算した(scripts/fetch-aggregates.mjs)。値は2回の実行で安定し、サーバ側 .sum() ともクロスチェック一致。run=quality は着弾確認の '1+1' 検証セッション1回を含む(opus 数¢分)。",
+  "source": "SignalFlow: data('claude_code.*', rollup='sum').publish() / window=8h / realm=jp0",
+  "cost_usage_usd": {
+    "by_run_model": {
+      "quality/opus  (tech-lead)":           1.153445,
+      "quality/sonnet(frontend-dev)":        0.482926,
+      "quality/haiku (reviewer+qa)":         0.169473,
+      "cost/sonnet  (tech-lead+frontend-dev)": 1.029609,
+      "cost/haiku   (reviewer+qa)":            0.319420
+    },
+    "by_run_total": { "quality": 1.805844, "cost": 1.349029 },
+    "all_runs_total_crosscheck": 3.154873,
+    "cost_run_savings_vs_quality": "25.3% 安い"
+  },
+  "token_usage_total": { "quality": 1759508, "cost": 2358713 },
+  "token_usage_by_run_model_type": {
+    "quality/opus":   { "input": 5845, "output": 14054, "cacheRead": 742820,  "cacheCreation": 40146 },
+    "quality/sonnet": { "input": 35,   "output": 13063, "cacheRead": 512590,  "cacheCreation": 35493 },
+    "quality/haiku":  { "input": 793,  "output": 15978, "cacheRead": 334412,  "cacheCreation": 44279 },
+    "cost/sonnet":    { "input": 213,  "output": 22494, "cacheRead": 1196250, "cacheCreation": 67101 },
+    "cost/haiku":     { "input": 784,  "output": 28337, "cacheRead": 980406,  "cacheCreation": 63128 }
+  },
+  "active_time_total_sec": { "quality": 748.9, "cost": 1003.3 },
+  "lines_of_code_count":   { "quality": 1675, "cost": 1607 },
+  "session_count":         { "quality": 2, "cost": 1, "_note": "quality の2はビルド本体+着弾確認の1+1" },
+  "commit_count":          { "quality": 1, "cost": 1 },
+  "apm_spans_cost_run": {
+    "_note": "cost ランのトレースを Collector debug で捕捉(quality ランは Splunk APM 側にのみ存在)",
+    "agent_delegation_spans": 4,
+    "agent_delegation_longest_ms": [424335, 114734, 70410, 62031],
+    "bash_spans": 35,
+    "llm_request_sonnet": 63,
+    "llm_request_haiku": 39,
+    "span_types_observed": ["interaction", "llm_request", "tool", "tool.execution", "tool.blocked_on_user"]
+  }
+}
