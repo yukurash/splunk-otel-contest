@@ -1,45 +1,47 @@
-import { useState, type FormEvent } from 'react';
+import { useRef } from 'react';
 
 type Props = {
   onAdd: (name: string) => void;
 };
 
 export function AddHabitForm({ onAdd }: Props) {
-  const [value, setValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const trimmed = value.trim();
-    if (trimmed === '') return;
-    onAdd(trimmed);
-    setValue('');
+    const input = inputRef.current;
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) return;
+    onAdd(name);
+    input.value = '';
+    input.focus();
   }
 
   return (
     <form
       className="add-habit-form"
       onSubmit={handleSubmit}
-      aria-label="習慣を追加するフォーム"
+      aria-label="新しい習慣を追加"
     >
-      <label htmlFor="habit-name-input" className="add-habit-form__label">
-        習慣の名前
+      <label className="add-habit-form__label" htmlFor="habit-name-input">
+        習慣名
       </label>
       <div className="add-habit-form__row">
         <input
+          ref={inputRef}
           id="habit-name-input"
-          type="text"
           className="add-habit-form__input"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="例: 毎朝ストレッチ"
-          aria-required="true"
+          type="text"
+          placeholder="例: 毎日30分読書"
           autoComplete="off"
+          maxLength={80}
+          aria-required="true"
         />
         <button
           type="submit"
-          className="add-habit-form__submit"
-          disabled={value.trim() === ''}
-          aria-label="習慣を追加"
+          className="btn btn--primary"
+          aria-label="新しい習慣を追加"
         >
           追加
         </button>

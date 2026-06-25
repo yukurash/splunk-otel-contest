@@ -1,49 +1,65 @@
-import { calculateStreak } from '../lib/habits';
-import type { Habit } from '../lib/habits';
+import { memo, useMemo } from 'react';
+import { calculateStreak } from '../lib/streak';
+import { toDateKey } from '../lib/date';
+import type { Habit } from '../types';
 
 type Props = {
   habit: Habit;
-  todayStr: string;
-  onToggle: (id: string) => void;
+  onToggleToday: (id: string) => void;
   onRemove: (id: string) => void;
 };
 
-export function HabitCard({ habit, todayStr, onToggle, onRemove }: Props) {
-  const isDone = habit.completedDates.includes(todayStr);
-  const streak = calculateStreak(habit, todayStr);
+export const HabitCard = memo(function HabitCard({
+  habit,
+  onToggleToday,
+  onRemove,
+}: Props) {
+  const todayKey = toDateKey(new Date());
+  const isDoneToday = habit.completedDates.includes(todayKey);
+
+  const streak = useMemo(() => {
+    const today = new Date();
+    return calculateStreak(habit.completedDates, today);
+  }, [habit.completedDates]);
 
   return (
-    <article className={`habit-card${isDone ? ' habit-card--done' : ''}`} aria-label={`習慣: ${habit.name}`}>
+    <li className={`habit-card${isDoneToday ? ' habit-card--done' : ''}`}>
       <div className="habit-card__info">
-        <h3 className="habit-card__name">{habit.name}</h3>
-        <p className="habit-card__streak" aria-label={`ストリーク ${streak} 日`}>
-          <span className="habit-card__streak-count" aria-hidden="true">
-            {streak}
+        <span className="habit-card__name">{habit.name}</span>
+        <span
+          className="habit-card__streak"
+          aria-label={`連続達成日数 ${streak} 日`}
+        >
+          <span className="habit-card__streak-icon" aria-hidden="true">
+            🔥
           </span>
-          <span className="habit-card__streak-label" aria-hidden="true">
-            日連続
-          </span>
-        </p>
+          {streak}
+          <span className="habit-card__streak-unit"> 日</span>
+        </span>
       </div>
       <div className="habit-card__actions">
         <button
           type="button"
-          className={`habit-card__toggle${isDone ? ' habit-card__toggle--done' : ''}`}
-          aria-pressed={isDone}
-          aria-label={isDone ? `${habit.name} の今日の達成を取り消す` : `${habit.name} を今日達成済みにする`}
-          onClick={() => onToggle(habit.id)}
+          className={`btn btn--toggle${isDoneToday ? ' btn--toggle-active' : ''}`}
+          aria-label={
+            isDoneToday
+              ? `${habit.name} の今日の達成を取り消す`
+              : `${habit.name} を今日達成にする`
+          }
+          aria-pressed={isDoneToday}
+          onClick={() => onToggleToday(habit.id)}
         >
-          {isDone ? '達成済み' : '達成する'}
+          {isDoneToday ? '達成済み' : '今日達成'}
         </button>
         <button
           type="button"
-          className="habit-card__remove"
-          aria-label={`${habit.name} を削除`}
+          className="btn btn--remove"
+          aria-label={`${habit.name} を削除する`}
           onClick={() => onRemove(habit.id)}
         >
           削除
         </button>
       </div>
-    </article>
+    </li>
   );
-}
+});

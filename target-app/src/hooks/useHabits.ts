@@ -1,65 +1,55 @@
-import { useState, useCallback, useMemo } from 'react';
-import type { Habit } from '../lib/habits';
-import {
-  addHabit,
-  removeHabit,
-  toggleCompletion,
-  formatDate,
-} from '../lib/habits';
+import { useState, useCallback } from 'react';
+import type { Habit } from '../types';
 import { loadHabits, saveHabits } from '../lib/storage';
+import { toDateKey } from '../lib/date';
 
-function generateId(): string {
-  return `habit-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-export type UseHabitsReturn = {
-  habits: Habit[];
-  todayStr: string;
-  addHabitByName: (name: string) => void;
-  removeHabitById: (id: string) => void;
-  toggleHabitCompletion: (id: string) => void;
-};
-
-export function useHabits(): UseHabitsReturn {
+export function useHabits() {
   const [habits, setHabits] = useState<Habit[]>(() => loadHabits());
-  // useMemo で安定化: アプリ起動中に日付が変わるケースは稀だが、
-  // 少なくともレンダーごとの再生成を防ぎ useCallback のメモ化を有効にする。
-  const todayStr = useMemo(() => formatDate(new Date()), []);
 
-  const addHabitByName = useCallback((name: string) => {
-    setHabits((prev) => {
-      const next = addHabit(prev, name, generateId());
-      saveHabits(next);
-      return next;
-    });
+  const persist = useCallback((next: Habit[]) => {
+    setHabits(next);
+    saveHabits(next);
   }, []);
 
-  const removeHabitById = useCallback((id: string) => {
-    setHabits((prev) => {
-      const next = removeHabit(prev, id);
-      saveHabits(next);
-      return next;
-    });
-  }, []);
-
-  const toggleHabitCompletion = useCallback(
-    (id: string) => {
-      setHabits((prev) => {
-        const next = prev.map((h) =>
-          h.id === id ? toggleCompletion(h, todayStr) : h,
-        );
-        saveHabits(next);
-        return next;
-      });
+  const addHabit = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const next: Habit = {
+        id: crypto.randomUUID(),
+        name: trimmed,
+        completedDates: [],
+      };
+      persist([...habits, next]);
     },
-    [todayStr],
+    [habits, persist],
   );
 
-  return {
-    habits,
-    todayStr,
-    addHabitByName,
-    removeHabitById,
-    toggleHabitCompletion,
-  };
+  const removeHabit = useCallback(
+    (id: string) => {
+      persist(habits.filter((h) => h.id !== id));
+    },
+    [habits, persist],
+  );
+
+  const toggleToday = useCallback(
+    (id: string) => {
+      const todayKey = toDateKey(new Date());
+      persist(
+        habits.map((h) => {
+          if (h.id !== id) return h;
+          const alreadyDone = h.completedDates.includes(todayKey);
+          return {
+            ...h,
+            completedDates: alreadyDone
+              ? h.completedDates.filter((d) => d !== todayKey)
+              : [...h.completedDates, todayKey],
+          };
+        }),
+      );
+    },
+    [habits, persist],
+  );
+
+  return { habits, addHabit, removeHabit, toggleToday };
 }

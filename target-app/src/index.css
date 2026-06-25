@@ -1,83 +1,79 @@
 /* ============================================================
-   Design System: ダークファースト配色・8pxグリッド
+   Design-system CSS variables (dark-first)
    ============================================================ */
 :root {
-  /* 配色 */
-  --color-bg: #0F172A;
-  --color-card: #1E293B;
-  --color-text: #F1F5F9;
-  --color-text-muted: #94A3B8;
-  --color-accent: #38BDF8;
-  --color-success: #34D399;
-  --color-warning: #FBBF24;
-  --color-danger: #F87171;
-  --color-border: #334155;
+  /* Color tokens */
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-accent: #38bdf8;
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-danger-hover: #ef4444;
 
-  /* 余白 (8pxグリッド) */
+  /* Extended tokens (for App.css internal use) */
+  --color-border: #334155;
+  --color-accent-light: #7dd3fc;
+  --color-surface-hover: #3d5068;
+  --color-success-light: #6ee7b7;
+
+  /* Spacing (8px grid) */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 32px;
 
-  /* 角丸 */
+  /* Shape */
   --radius: 12px;
   --radius-sm: 8px;
 
-  /* フォント */
-  --sans: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* Focus ring */
+  --focus-ring: 2px solid var(--color-accent);
 
+  /* Typography */
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   font-family: var(--sans);
   font-size: 16px;
-  line-height: 1.6;
-  color: var(--color-text);
-  background-color: var(--color-bg);
+  line-height: 1.5;
   color-scheme: dark;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ============================================================
+   Reset / base
+   ============================================================ */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
-  min-height: 100svh;
   background-color: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100svh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
   min-height: 100svh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* フォーカスリング */
+/* Remove default list styling */
+ul,
+ol {
+  list-style: none;
+}
+
+/* Accessible focus outline for all interactive elements */
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: var(--focus-ring);
   outline-offset: 2px;
-}
-
-h1,
-h2,
-h3 {
-  margin: 0;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--color-text);
-}
-
-p {
-  margin: 0;
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
 }

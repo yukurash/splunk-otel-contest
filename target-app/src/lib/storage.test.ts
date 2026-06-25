@@ -1,173 +1,322 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { loadHabits, saveHabits } from './storage';
-import type { Habit } from './habits';
+import type { Habit } from '../types';
 
-describe('storage.ts', () => {
+// Fake in-memory localStorage
+const createFakeLocalStorage = () => {
+  const store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      Object.keys(store).forEach((key) => delete store[key]);
+    },
+    get length() {
+      return Object.keys(store).length;
+    },
+    key: (index: number) => Object.keys(store)[index] ?? null,
+  };
+};
+
+describe('storage: loadHabits & saveHabits', () => {
+  let fakeStorage: ReturnType<typeof createFakeLocalStorage>;
+
   beforeEach(() => {
-    // クリアして各テストを分離
-    localStorage.clear();
-    vi.clearAllMocks();
-  });
-
-  describe('saveHabits', () => {
-    it('習慣配列を localStorage に JSON で保存する', () => {
-      const habits: Habit[] = [
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-15'] },
-      ];
-      saveHabits(habits);
-
-      const stored = localStorage.getItem('app:habits');
-      expect(stored).not.toBeNull();
-      expect(JSON.parse(stored!)).toEqual(habits);
-    });
-
-    it('空配列を保存できる', () => {
-      saveHabits([]);
-      const stored = localStorage.getItem('app:habits');
-      expect(JSON.parse(stored!)).toEqual([]);
-    });
-
-    it('複数習慣を保存できる', () => {
-      const habits: Habit[] = [
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-15'] },
-        { id: 'id-2', name: 'Running', completedDates: [] },
-      ];
-      saveHabits(habits);
-
-      const stored = localStorage.getItem('app:habits');
-      expect(JSON.parse(stored!)).toHaveLength(2);
+    fakeStorage = createFakeLocalStorage();
+    // Replace global localStorage with fake
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: fakeStorage,
+      writable: true,
+      configurable: true,
     });
   });
 
   describe('loadHabits', () => {
-    it('保存されていない場合は空配列を返す', () => {
+    it('returns empty array when localStorage is empty', () => {
+      // Act
       const result = loadHabits();
+
+      // Assert
       expect(result).toEqual([]);
     });
 
-    it('保存された習慣を読み込む', () => {
-      const habits: Habit[] = [
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-15'] },
-      ];
-      saveHabits(habits);
+    it('returns empty array when stored value is null', () => {
+      // Arrange
+      fakeStorage.removeItem('app:habits');
 
-      const loaded = loadHabits();
-      expect(loaded).toEqual(habits);
-    });
-
-    it('複数習慣を読み込む', () => {
-      const habits: Habit[] = [
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-15'] },
-        { id: 'id-2', name: 'Running', completedDates: [] },
-      ];
-      saveHabits(habits);
-
-      const loaded = loadHabits();
-      expect(loaded).toHaveLength(2);
-    });
-
-    it('不正な JSON の場合は空配列を返す', () => {
-      localStorage.setItem('app:habits', 'invalid json {');
+      // Act
       const result = loadHabits();
+
+      // Assert
       expect(result).toEqual([]);
     });
 
-    it('配列ではない JSON の場合は空配列を返す', () => {
-      localStorage.setItem('app:habits', '{"foo": "bar"}');
+    it('returns empty array on invalid JSON', () => {
+      // Arrange
+      fakeStorage.setItem('app:habits', 'not valid json {]');
+
+      // Act
       const result = loadHabits();
+
+      // Assert
       expect(result).toEqual([]);
     });
 
-    it('不正な要素を含む配列から不正な要素を除外する', () => {
-      // id が数字、name が存在しない不正な要素を混ぜる
-      const stored = JSON.stringify([
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-15'] },
-        { id: 123, name: 'Invalid', completedDates: [] }, // id は文字列でなければならない
-        { id: 'id-2', name: 'Running', completedDates: [] },
-      ]);
-      localStorage.setItem('app:habits', stored);
+    it('returns empty array when stored value is not an array', () => {
+      // Arrange
+      fakeStorage.setItem('app:habits', JSON.stringify({ id: '1' }));
 
-      const loaded = loadHabits();
-      expect(loaded).toHaveLength(2);
-      expect(loaded[0].name).toBe('Yoga');
-      expect(loaded[1].name).toBe('Running');
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual([]);
     });
 
-    it('completedDates が非文字列を含む場合、その要素は除外される', () => {
-      const stored = JSON.stringify([
+    it('filters out invalid habit objects (missing id)', () => {
+      // Arrange
+      const invalid = [
         {
-          id: 'id-1',
-          name: 'Yoga',
-          completedDates: ['2025-01-15', 123, '2025-01-16'], // 123 は不正
+          name: 'Run',
+          completedDates: [],
         },
-      ]);
-      localStorage.setItem('app:habits', stored);
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(invalid));
 
-      const loaded = loadHabits();
-      // 配列全体が除外される(completedDates の検証が失敗)
-      expect(loaded).toHaveLength(0);
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual([]);
     });
 
-    it('name が文字列でない場合は除外される', () => {
-      const stored = JSON.stringify([
-        { id: 'id-1', name: 'Yoga', completedDates: [] },
-        { id: 'id-2', name: 123, completedDates: [] }, // name は文字列でなければならない
-      ]);
-      localStorage.setItem('app:habits', stored);
+    it('filters out invalid habit objects (missing name)', () => {
+      // Arrange
+      const invalid = [
+        {
+          id: 'uuid-1',
+          completedDates: [],
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(invalid));
 
-      const loaded = loadHabits();
-      expect(loaded).toHaveLength(1);
-      expect(loaded[0].name).toBe('Yoga');
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual([]);
     });
 
-    it('completedDates が配列でない場合は除外される', () => {
-      const stored = JSON.stringify([
-        { id: 'id-1', name: 'Yoga', completedDates: [] },
-        { id: 'id-2', name: 'Running', completedDates: 'not-array' },
-      ]);
-      localStorage.setItem('app:habits', stored);
+    it('filters out invalid habit objects (missing completedDates)', () => {
+      // Arrange
+      const invalid = [
+        {
+          id: 'uuid-1',
+          name: 'Run',
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(invalid));
 
-      const loaded = loadHabits();
-      expect(loaded).toHaveLength(1);
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('filters out completedDates with non-string elements', () => {
+      // Arrange
+      const mixed = [
+        {
+          id: 'uuid-1',
+          name: 'Run',
+          completedDates: ['2025-01-15', 123, true],
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(mixed));
+
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual([]);
+    });
+
+    it('loads valid habit objects', () => {
+      // Arrange
+      const valid: Habit[] = [
+        {
+          id: 'uuid-1',
+          name: 'Morning Run',
+          completedDates: ['2025-01-15', '2025-01-14'],
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(valid));
+
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual(valid);
+    });
+
+    it('loads multiple valid habits', () => {
+      // Arrange
+      const valid: Habit[] = [
+        {
+          id: 'uuid-1',
+          name: 'Morning Run',
+          completedDates: ['2025-01-15'],
+        },
+        {
+          id: 'uuid-2',
+          name: 'Meditation',
+          completedDates: [],
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(valid));
+
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toEqual(valid);
+    });
+
+    it('filters out invalid items in mixed array', () => {
+      // Arrange
+      const mixed = [
+        {
+          id: 'uuid-1',
+          name: 'Morning Run',
+          completedDates: ['2025-01-15'],
+        },
+        { id: 'uuid-2' }, // Missing required fields
+        {
+          id: 'uuid-3',
+          name: 'Meditation',
+          completedDates: [],
+        },
+      ];
+      fakeStorage.setItem('app:habits', JSON.stringify(mixed));
+
+      // Act
+      const result = loadHabits();
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('uuid-1');
+      expect(result[1].id).toBe('uuid-3');
     });
   });
 
-  describe('roundtrip: save → load', () => {
-    it('保存と読み込みで一貫性を保つ', () => {
-      const original: Habit[] = [
-        { id: 'id-1', name: 'Yoga', completedDates: ['2025-01-14', '2025-01-15'] },
-        { id: 'id-2', name: 'Running', completedDates: [] },
-      ];
-      saveHabits(original);
-      const loaded = loadHabits();
-
-      expect(loaded).toEqual(original);
-    });
-
-    it('空配列のラウンドトリップ', () => {
-      const original: Habit[] = [];
-      saveHabits(original);
-      const loaded = loadHabits();
-
-      expect(loaded).toEqual(original);
-    });
-
-    it('複雑な completedDates のラウンドトリップ', () => {
-      const original: Habit[] = [
+  describe('saveHabits', () => {
+    it('saves habits to localStorage as JSON', () => {
+      // Arrange
+      const habits: Habit[] = [
         {
-          id: 'id-1',
-          name: 'Meditation',
-          completedDates: [
-            '2024-12-25',
-            '2024-12-26',
-            '2025-01-01',
-            '2025-01-15',
-          ],
+          id: 'uuid-1',
+          name: 'Morning Run',
+          completedDates: ['2025-01-15'],
         },
       ];
+
+      // Act
+      saveHabits(habits);
+
+      // Assert
+      const stored = fakeStorage.getItem('app:habits');
+      expect(stored).toBe(JSON.stringify(habits));
+    });
+
+    it('saves empty array', () => {
+      // Arrange
+      const habits: Habit[] = [];
+
+      // Act
+      saveHabits(habits);
+
+      // Assert
+      const stored = fakeStorage.getItem('app:habits');
+      expect(stored).toBe(JSON.stringify([]));
+    });
+
+    it('overwrites previous value', () => {
+      // Arrange
+      const first: Habit[] = [
+        {
+          id: 'uuid-1',
+          name: 'Old Habit',
+          completedDates: [],
+        },
+      ];
+      const second: Habit[] = [
+        {
+          id: 'uuid-2',
+          name: 'New Habit',
+          completedDates: [],
+        },
+      ];
+      saveHabits(first);
+
+      // Act
+      saveHabits(second);
+
+      // Assert
+      const stored = fakeStorage.getItem('app:habits');
+      expect(stored).toBe(JSON.stringify(second));
+    });
+  });
+
+  describe('round-trip: save then load', () => {
+    it('preserves habit data through save and load', () => {
+      // Arrange
+      const original: Habit[] = [
+        {
+          id: 'uuid-1',
+          name: 'Morning Run',
+          completedDates: ['2025-01-15', '2025-01-14'],
+        },
+        {
+          id: 'uuid-2',
+          name: 'Meditation',
+          completedDates: [],
+        },
+      ];
+
+      // Act
       saveHabits(original);
       const loaded = loadHabits();
 
+      // Assert
+      expect(loaded).toEqual(original);
+    });
+
+    it('round-trip with multiple habits including empty completedDates', () => {
+      // Arrange
+      const original: Habit[] = [
+        {
+          id: 'id-a',
+          name: 'Habit A',
+          completedDates: [],
+        },
+        {
+          id: 'id-b',
+          name: 'Habit B',
+          completedDates: ['2025-01-15', '2025-01-16', '2025-01-17'],
+        },
+      ];
+
+      // Act
+      saveHabits(original);
+      const loaded = loadHabits();
+
+      // Assert
       expect(loaded).toEqual(original);
     });
   });

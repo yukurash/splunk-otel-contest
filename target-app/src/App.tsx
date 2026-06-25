@@ -1,36 +1,38 @@
 import './App.css';
-import { AddHabitForm } from './components/AddHabitForm';
-import { EmptyState } from './components/EmptyState';
-import { HabitCard } from './components/HabitCard';
 import { useHabits } from './hooks/useHabits';
+import { AddHabitForm } from './components/AddHabitForm';
+import { HabitCard } from './components/HabitCard';
+import { EmptyState } from './components/EmptyState';
 
 function App() {
-  const { habits, todayStr, addHabitByName, removeHabitById, toggleHabitCompletion } =
-    useHabits();
+  const { habits, addHabit, removeHabit, toggleToday } = useHabits();
 
   return (
-    <div className="app">
-      <header className="app__header">
-        <h1 className="app__title">習慣トラッカー</h1>
-        <p className="app__date">今日: {todayStr}</p>
+    <div className="app-shell">
+      <header className="app-header">
+        <h1 className="app-header__title">習慣トラッカー</h1>
+        <p className="app-header__subtitle">毎日の習慣を記録して連続達成を目指そう</p>
       </header>
 
-      <main className="app__main">
-        <AddHabitForm onAdd={addHabitByName} />
+      <main className="app-main">
+        <section className="add-section" aria-label="習慣を追加">
+          <AddHabitForm onAdd={addHabit} />
+        </section>
 
-        <section className="habit-list" aria-label="習慣リスト">
+        <section className="habits-section" aria-label="習慣一覧">
           {habits.length === 0 ? (
             <EmptyState />
           ) : (
-            habits.map((habit) => (
-              <HabitCard
-                key={habit.id}
-                habit={habit}
-                todayStr={todayStr}
-                onToggle={toggleHabitCompletion}
-                onRemove={removeHabitById}
-              />
-            ))
+            <ul className="habit-list" aria-label="登録された習慣">
+              {habits.map((habit) => (
+                <HabitCard
+                  key={habit.id}
+                  habit={habit}
+                  onToggleToday={toggleToday}
+                  onRemove={removeHabit}
+                />
+              ))}
+            </ul>
           )}
         </section>
       </main>
