@@ -24,7 +24,7 @@ async function api(method, path, body) {
 }
 
 // COUNTER(デルタ)なので rollup='sum' で可視ウィンドウ内を合算して総量表示する
-const chart = (name, program, type = 'List', extra = {}) => ({
+const chart = (name, program, type = 'TimeSeriesChart', extra = {}) => ({
   name,
   programText: program,
   options: { type, ...extra },
