@@ -1,20 +1,19 @@
 {
   "_note": "scripts/provision-splunk.mjs が Splunk API で作成した可観測性オブジェクト。秘密は含まない。",
   "realm": "jp0",
-  "dashboardGroupId": "HLnGPH6CEAE",
-  "dashboardId": "HLnGXNiCIAA",
-  "detectorId": "HLnGnWWCEAI",
+  "dashboardGroupId": "HLoiAXpCEAA",
+  "dashboardId": "HLojoxGCMAA",
+  "detectorId": "HLonlVPCMAA",
   "chartIds": {
-    "abCost": "HLnGCJgCIAA",
-    "byAgentModel": "HLnGPCBCIAE",
-    "tokenBySkill": "HLnGwBHCMBE",
-    "costByModel": "HLnGPCBCIAI",
-    "activeByRun": "HLnGPCBCIAM",
-    "costOverTime": "HLnGlATCIAo"
+    "costByAgent": "HLojkBWCEAA",
+    "costBySkill": "HLoh5NKCMAA",
+    "costByModel": "HLok4_8CMAU",
+    "tokenBySkill": "HLoiAJUCIAA",
+    "eventsApiRequest": "HLooxRhCEAs"
   },
   "urls": {
-    "dashboard": "https://app.jp0.signalfx.com/#/dashboard/HLnGXNiCIAA",
-    "dashboardGroup": "https://app.jp0.signalfx.com/#/dashboard/HLnGPH6CEAE",
-    "detector": "https://app.jp0.signalfx.com/#/detector/HLnGnWWCEAI/edit"
+    "dashboard": "https://app.jp0.signalfx.com/#/dashboard/HLojoxGCMAA",
+    "dashboardGroup": "https://app.jp0.signalfx.com/#/dashboard/HLoiAXpCEAA",
+    "detector": "https://app.jp0.signalfx.com/#/detector/HLonlVPCMAA/edit"
   }
 }

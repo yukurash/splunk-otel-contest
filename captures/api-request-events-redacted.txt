@@ -1,14 +1,15 @@
 ================================================================
-イベント層: claude_code.api_request の実捕捉サンプル（PII伏字化済み）
+イベント層: claude_code.api_request の実捕捉サンプル（run=zenn / PII伏字化済み）
 ----------------------------------------------------------------
 取得方法:
   - .claude/settings.json に OTEL_LOGS_EXPORTER=otlp を追加。
   - Collector に logs パイプライン（receivers[otlp] → redaction/scrub → debug exporter）を追加。
-  - 小セッションを1回実行:
-      claude -p "target-app の App.tsx と useHabits.ts を読んで役割を1行ずつ説明" --allowedTools Read
-  - Collector debug 出力から claude_code.api_request の LogRecord を抽出し、prompt.id で集計。
-注: user.email / user.id / organization.id / account_* は <redacted> 化（Collector の redaction は
-    秘密パターン/ファイルパス向けで、email 等は素通りするため手動伏字化した）。
+  - 習慣トラッカーのビルド(tech-lead 1指示)を実行し、Collector debug 出力から
+    claude_code.api_request の LogRecord を抽出、prompt.id で集計。
+  - さらに scripts/events-bridge.mjs で ingest /v2/event に転送し、Splunk Event Feed に着弾させた
+    （signalfx exporter は素の OTel ログをイベント化しないため、ブリッジで /v2/event に投げ直す必要がある）。
+注: user.email / user.id / organization.id / account_* / session.id は <redacted> 化。
+    （Collector の redaction は秘密パターン/ファイルパス向けで email 等は素通りするため手動伏字化）
 ================================================================
 
 
@@ -17,54 +18,53 @@
 
 Resource attributes:
   -> project: otel-webapp
-  -> run: event-demo                 (このサンプル用の一時ラベル。A/B本番は quality/cost)
+  -> run: zenn
   -> service.name: claude-code
   -> service.version: 2.1.191
 LogRecord (Body: claude_code.api_request)
   -> event.name: api_request
-  -> event.timestamp: 2026-06-24T23:55:22.790Z
-  -> event.sequence: 2
-  -> prompt.id: ce4b8a45-...-21fd3b3b3090
-  -> model: claude-haiku-4-5-20251001
-  -> input_tokens: 550
-  -> output_tokens: 24
+  -> prompt.id: ea0eda6f-...                  <- この1指示(ビルド全体)を束ねるID
+  -> model: claude-opus-4-8
+  -> input_tokens: 2789
+  -> output_tokens: 203
   -> cache_read_tokens: 0
-  -> cache_creation_tokens: 0
-  -> cost_usd: 0.00067
-  -> cost_usd_micros: 670
-  -> duration_ms: 1847
-  -> request_id: req_011CcNzG5potNz27pvBsvkAN     <- trace の llm_request.request_id と join 可
-  -> speed: normal
-  -> query_source: generate_session_title
-  -> user.email / user.id / organization.id / user.account_*: <redacted>
+  -> cache_creation_tokens: ...
+  -> cost_usd: 0.08895                         <- この1指示で最も高い1本
+  -> duration_ms: ...
+  -> request_id: req_...                       <- trace の llm_request.request_id と join 可
+  -> query_source: sdk
+  -> user.email / user.id / organization.id / session.id / user.account_*: <redacted>
 
 
 ########## 2) prompt.id で束ねた「1指示のファンアウト」##########
-# 1つのユーザー指示が 3 本の API 呼び出しに展開し、合計 $0.106 かかった内訳
+# 「習慣トラッカーを作って」という tech-lead への1指示が、内部で 102 本の API 呼び出しに展開した
 
-prompt.id = ce4b8a45-...-21fd3b3b3090   ( 3 api_request / 合計 $0.10600 )
+prompt.id = ea0eda6f-...   ( 102 api_request / 合計 $1.7575 )
 
-  model                       query_source              cost_usd   in     out  cacheRead cacheCreate  dur
-  claude-haiku-4-5            generate_session_title    $0.00067   550    24   0         0            1847ms
-  claude-opus-4-8             sdk                       $0.04849   2996   175  11447     2341         4254ms
-  claude-opus-4-8             sdk                       $0.05684   2       167  13788     4576         4788ms
-  --------------------------------------------------------------------------------------------------------
-  合計                                                  $0.10600
+  model              query_source             cost_usd    in     out    cacheRead
+  claude-haiku-4-5   generate_session_title   $0.00115    1009   29     0          ← 補助(タイトル生成)
+  claude-opus-4-8    sdk                       $0.08895   2789   203    0          ← 最高額の1本
+  claude-opus-4-8    sdk                       $0.04531   2      106    6993
+  claude-opus-4-8    sdk                       $0.01532   2      195    10908
+  claude-opus-4-8    sdk                       $0.04948   2      953    11765
+  ...（以下、opus / sonnet / haiku 合わせて 102 本）
+  --------------------------------------------------------------------------------
+  合計                                         $1.7575
 
 読み取れること:
-  - 「2ファイル読んで説明して」という 1 指示が、内部で 3 リクエストに展開（=ファンアウト）。
-    ・haiku 1本はセッションタイトル自動生成（query_source=generate_session_title）= 補助。
-    ・opus 2本が実作業（query_source=sdk）。
+  - 「アプリ作って」という 1 指示が、内部で 102 リクエストに展開（=ファンアウト）。
   - メトリクス(cost.usage 合算)では「opus がいくら」までしか出ないが、イベントでは
-    「どの request_id が $0.05684」という 1 リクエスト単位の実コスト明細が取れる。
-  - prompt.id で「1つの指示が起こした総コスト」を束ねられる（$0.106/指示）。
-  - イベントの query_source はメトリクス(main/subagent/auxiliary)より粒度が細かく、
-    generate_session_title / sdk / compact / repl_main_thread 等のサブシステム名が出る。
+    「どの request_id が $0.08895」という 1 リクエスト単位の実コスト明細が取れる。
+  - prompt.id で「1つの指示が起こした総コスト」を束ねられる（$1.7575 / 指示）。
+  - 各行の request_id を鍵に、トレースの claude_code.llm_request スパン（トークンは持つが
+    cost_usd は無い）と join → waterfall の各バーに金額を載せられる。
 
 
 ########## 3) これで開く分析（メトリクス/トレースにできないこと）##########
   - per-request の実コスト明細・監査ログ（cost_usd を行単位で保持）。
   - prompt.id で「高コストな指示」をランキングできる。
-  - request_id を鍵に トレースの claude_code.llm_request スパン（トークンは持つが cost_usd は無い）と
-    join → 「各スパンの実コスト($)」= waterfall の各バーに金額を載せられる。
+  - request_id で トレースのスパンと join → 各スパンの実コスト($)を可視化。
+
+確認(Splunk): Event Feed もしくはチャートのイベントオーバーレイで
+  eventType='claude_code.api_request' / actor='build-team'。
 ================================================================

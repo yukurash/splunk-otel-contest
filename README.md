@@ -29,7 +29,7 @@ Claude Code のエージェント群（main 1 + subagent 3）を **OpenTelemetry
        │ OTel Collector  │  redaction + scrub
        │ (Splunk distro) │  でパス/コマンド/秘密を除去
        └───────┬─────────┘
-        sapm (traces) / signalfx (metrics)
+        otlp_http (traces) / signalfx (metrics) / events bridge
                │
        ┌───────▼─────────┐
        │ Splunk          │
@@ -44,11 +44,14 @@ Claude Code のエージェント群（main 1 + subagent 3）を **OpenTelemetry
 splunk-otel-contest/
   .claude/agents/{tech-lead,frontend-dev,code-reviewer,qa-tester}.md
   .claude/skills/{design-system,test-strategy,commit-convention,quality-gate}/SKILL.md
-  .claude/settings.json          # OTel テレメトリ設定（A/B切替: run=quality / run=cost）
+  .claude/settings.json          # OTel テレメトリ設定（run=zenn）
   collector/{docker-compose.yml,config.yaml,.env.example}
-  target-app/                    # エージェントが生成（品質ラン）
-  target-app-cost/               # エージェントが生成（コスパラン）
-  captures/                      # Splunk 計測データ（A/B集計・トレース/イベントの実サンプル）
+  scripts/run-build.sh           # エージェントチームでビルドを起動
+  scripts/provision-splunk.mjs   # ダッシュボード+ディテクタを API 生成
+  scripts/events-bridge.mjs      # api_request を Splunk Event Feed へ転送
+  target-app/                    # エージェントチームが生成した習慣トラッカー
+  captures/                      # Splunk 計測データ（run=zenn 集計・トレース/イベントの実サンプル）
+  docs/screenshot-guide.md       # ①〜⑥ のスクショ取得場所
 ```
 
 ## セットアップ
@@ -72,19 +75,24 @@ claude -p "1+1は?"
 #   claude_code.cost.usage が project=otel-webapp で見える
 ```
 
-### 3. A/B ラン
+### 3. ビルド実行（エージェントチーム）
 
-**品質ラン**（opus）:
+tech-lead(opus, main) が frontend-dev / code-reviewer / qa-tester に委譲し、習慣トラッカーを
+計画→実装→レビュー→テスト→`/quality-gate`→コミット まで一気通貫で作る。
+
 ```bash
-# settings.json: run=quality / tech-lead.md: model: opus
-claude --agent tech-lead "習慣トラッカーを実装して。\
-計画→実装(frontend-dev)→レビュー(code-reviewer)→テスト(qa-tester)→/quality-gate→コミット まで通して。"
+bash scripts/run-build.sh
+# 中身: claude --agent tech-lead -p "..."（settings.json の run=zenn で計装）
 ```
 
-**コスパラン**（sonnet）:
+### 4. ダッシュボード/ディテクタ生成 & スクショ
+
 ```bash
-# settings.json: run=cost / tech-lead.md: model: sonnet / 出力先 target-app-cost
+node scripts/provision-splunk.mjs   # ①Agent ②Skill ③Model ④イベント のダッシュボード + ⑥アラート
+node scripts/events-bridge.mjs      # ④イベント(api_request)を Splunk Event Feed へ転送
 ```
+
+撮影場所は [`docs/screenshot-guide.md`](docs/screenshot-guide.md) に ①〜⑥ でまとめてある。
 
 ## セキュリティ
 

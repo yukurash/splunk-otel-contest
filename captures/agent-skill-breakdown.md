@@ -1,80 +1,76 @@
-# エージェント別・スキル別の消費内訳（Splunk 実測）
+# エージェント別・スキル別の消費内訳（Splunk 実測 / run=zenn）
 
 > `claude_code.cost.usage` / `claude_code.token.usage`（SignalFx COUNTER）を
-> `query_source` / `agent.name` / `model` / `skill.name` dimension で切った実測。`rollup='sum'` 合算。
+> `query_source` / `model` / `skill.name` dimension で切った実測。`rollup='sum'` 合算。
+> 対象は習慣トラッカー開発ビルド本体 1 セッション（`run=zenn` / `session.id=0834068a…`）。
 > 属性の定義は公式 [Monitoring](https://code.claude.com/docs/en/monitoring-usage) の Cost/Token counter に準拠。
 
-## メトリクスに付く主な dimension（公式定義＋実測）
+## メトリクスに付く主な dimension
 
 | dimension | 値 / 挙動 |
 |-----------|-----------|
-| `query_source` | `main` / `subagent` / `auxiliary` の3値。**main とサブエージェントを直接分離できる**（公式定義）。 |
-| `agent.name` | サブエージェント種別。**ビルトイン agent と official-marketplace plugin の agent 名はそのまま(verbatim)出る**。**ユーザー定義 agent は `"custom"` に丸められる**。名前付き subagent 由来でないリクエストでは**属性自体が absent**。 |
-| `skill.name` | アクティブな skill。**ビルトイン/bundled/ユーザー定義/official-marketplace の skill 名は verbatim**。third-party plugin の skill だけ `"third-party"` に丸まる。skill 不在なら absent。 |
+| `query_source` | `main` / `subagent` / `auxiliary` の3値。**main とサブエージェントを直接分離できる**。 |
+| `agent.name` | サブエージェント種別。ビルトイン/公式マーケットプレイスの agent 名は verbatim。**ユーザー定義 agent は `"custom"` に丸まる**（本企画の自作3体はこれ）。 |
+| `skill.name` | アクティブな skill。**今回は能動 invoke した `quality-gate` のみ立った**（後述）。 |
 | `model` | モデル識別子（opus/sonnet/haiku）。 |
-| `plugin.name` / `marketplace.name` / `mcp_server.name` / `mcp_tool.name` | plugin/MCP 由来の属性（本企画では未使用）。 |
 
-> 重要な訂正: 以前「`agent.name` は `-`/`custom` の2値でサブエージェント名は出ない」と書いていたが**誤り**。
-> 本企画の frontend-dev / code-reviewer / qa-tester が `"custom"` になったのは
-> **ユーザー定義 agent だから**であり、仕様上サブエージェント名が常に消えるわけではない
-> （ビルトイン/公式マーケットプレイス agent なら verbatim で出る）。
+## ① エージェントごと（`query_source` × `model`）★推奨の切り口
 
-## main vs サブエージェント（`query_source`）★推奨の切り口
+自作サブエージェントは `agent.name` が `custom` に丸まるため、`query_source` で main/subagent/auxiliary を分けるのが最も素直:
 
-`agent.name`(main は absent) に頼らず、`query_source` で main/subagent/auxiliary を直接分けられる:
+| query_source × model | 実体 | cost (USD) |
+|----------------------|------|-----|
+| **main × opus**      | tech-lead（メインスレッド） | **0.9189** |
+| subagent × sonnet    | frontend-dev | 0.5253 |
+| subagent × haiku     | code-reviewer + qa-tester | 0.3122 |
+| auxiliary × haiku    | セッションタイトル生成などの補助 | 0.0012 |
 
-| run | query_source | model | cost (USD) |
-|-----|--------------|-------|-----|
-| quality | **main**      | opus   | **1.153** |
-| quality | subagent     | sonnet | 0.483 |
-| quality | subagent     | haiku  | 0.169 |
-| quality | auxiliary    | haiku  | 0.001 |
-| cost    | **main**      | sonnet | **0.633** |
-| cost    | subagent     | sonnet | 0.397 |
-| cost    | subagent     | haiku  | 0.319 |
-| cost    | auxiliary    | haiku  | 0.001 |
+- ビルド合計 = **$1.7575**。司令塔 tech-lead(opus) が約半分。
+- **メトリクス単体では code-reviewer と qa-tester（両方 haiku/subagent）は切れない**。これはトレースで分離する（後述）。
 
-- run合計: quality = main 1.153 + subagent 0.652 + auxiliary 0.001。cost = main 0.633 + subagent 0.715 + auxiliary 0.001。
-- **cost ランは tech-lead(main) も frontend-dev(subagent) も sonnet** だが、`query_source` で
-  **main=$0.633 / subagent(sonnet)=$0.397** に分離できる（`agent.name` でも同結果）。
-- `auxiliary` は補助用途（タイトル生成等）の haiku。どちらの run でも $0.001 程度。
+## ③ モデルごと（`model`）
 
-## subagent 同士の分離（reviewer vs qa）— トレースで可能
+| model | cost (USD) |
+|-------|-----|
+| opus   | 0.9189 |
+| sonnet | 0.5253 |
+| haiku  | 0.3133 |
 
-**メトリクス単体**では code-reviewer と qa-tester は**両方 haiku のユーザー定義 subagent**＝
-`query_source=subagent` / `agent.name=custom` / `model=haiku` が同一で**切れない**。
+トークンは合計 2,053,096（haiku 834,277 / sonnet 648,209 / opus 570,610）。cacheRead が支配的（約1.85M）。
 
-ただし本企画は **`CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1` と `OTEL_LOG_TOOL_DETAILS=1` を有効化済み**で、
-**分散トレース**を実際に取得している。トレースなら:
-- `claude_code.llm_request` スパンが `agent_id` / `parent_agent_id` / `query_source`（=サブエージェント名）と
-  per-span の `input_tokens` / `output_tokens` / `cache_read_tokens` / `cache_creation_tokens` を持つ。
-- `claude_code.tool` スパンが `skill_name` / `subagent_type` を持つ（`OTEL_LOG_TOOL_DETAILS=1` 有効時）。
+## ② スキルごと（`skill.name`）— アクティブなスキルの分だけ立つ
 
-→ **メトリクスで haiku に潰れて切れなかった reviewer と qa も、トレースの `agent_id` / `subagent_type` で
-別スパンとして分離でき、waterfall も得られる**。「切れない」はメトリクス層に限った話で、トレースで覆る。
+| skill.name | 種別 | cost (USD) |
+|-----------|------|-----|
+| `quality-gate` | 能動 invoke（出荷ゲート） | 0.3226 |
+| `design-system` | 常駐（規約・知識） | 0.0438 |
+| `commit-convention` | 常駐（規約・知識） | 0.0186 |
+| `test-strategy` | 常駐（規約・知識） | 0.0141 |
 
-## スキル別（`skill.name`）
+- `skill.name` にコストが立つのは **「そのスキルがアクティブな間」のリクエスト**。
+- `quality-gate` はビルド中に `/quality-gate` で能動 invoke した分（$0.3226）。
+- 残り3つの常駐(preload)知識スキルは、**紐づけているだけでなく明示的にアクティブにしたとき**に
+  `skill.name` に独立して立った（run=zenn 内の別 session a621a31f で各スキルをアクティブ化して取得）。
+  → 「どの規約スキルを使っている間にいくらか」まで切れる。
+  （※ 紐づけ方/バージョンで挙動が変わりうる。本企画 v2.1.191・自作スキル構成での観測。）
 
-| run | skill.name | 種別 | tokens | cost (USD) |
-|-----|-----------|------|--------|-----|
-| cost    | commit-convention | preload 知識 | 1,990,950 | 1.069 |
-| quality | quality-gate      | 能動 invoke  | 503,071   | 0.476 |
-| cost    | quality-gate      | 能動 invoke  | 299,656   | 0.153 |
-| cost    | design-system     | preload 知識 | 15,394    | 0.013 |
+## ⑤ subagent 同士の分離（reviewer vs qa）— トレースで可能
 
-- **メトリクスの `skill.name` はユーザー定義 skill でも verbatim** で出る（third-party plugin だけ `"third-party"`）。
-  quality-gate / commit-convention / design-system がそのまま出たのはこのため。
-- 一方 `claude_code.skill_activated` **イベント**側では、ユーザー定義 skill は
-  `OTEL_LOG_TOOL_DETAILS=1` でない限り `"custom_skill"` に丸まる（本企画は有効化済みなので verbatim）。
-  → 「メトリクスは verbatim / イベントは要フラグ」という差がある。
+メトリクスでは code-reviewer と qa-tester は両方 `query_source=subagent` / `model=haiku` で**切れない**。
+ただし `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA=1` で取得した**分散トレース**なら:
+
+- `claude_code.llm_request` スパンが `agent_id` / `query_source` と per-span の `input_tokens`/`output_tokens`/`cache_*_tokens` を持つ。
+- `claude_code.tool` スパンが `subagent_type`（`OTEL_LOG_TOOL_DETAILS=1` 有効時）を持つ。
+
+→ **同一モデルの custom subagent もトレースなら別スパンとして分離でき、waterfall も得られる**。「切れない」はメトリクス層に限った話。
 
 ## 取得層のまとめ（3層）
 
-| 層 | 設定 | 何が得られるか | 本企画 |
-|----|------|----------------|--------|
-| メトリクス | `OTEL_METRICS_EXPORTER` | agent.name × skill.name × query_source × model の**集計**。ダッシュボード向き | ✅ 取得 |
-| イベント | `OTEL_LOGS_EXPORTER` | `api_request` の `cost_usd`＋属性＋`prompt.id`。**リクエスト単位の実コスト明細**・監査向き | ✅ 取得（[`api-request-events-redacted.txt`](./api-request-events-redacted.txt)）|
-| トレース(beta) | `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` + `OTEL_TRACES_EXPORTER` | `agent_id` / `query_source` / per-span トークン。**同一モデルの custom subagent を分離＋waterfall** | ✅ 取得 |
+| 層 | 設定 | 何が得られるか |
+|----|------|----------------|
+| メトリクス | `OTEL_METRICS_EXPORTER` | query_source × model × skill.name の**集計**。ダッシュボード向き |
+| イベント | `OTEL_LOGS_EXPORTER` | `api_request` の `cost_usd`＋`prompt.id`。**リクエスト単位の実コスト明細**・監査向き |
+| トレース(beta) | `CLAUDE_CODE_ENHANCED_TELEMETRY_BETA` + `OTEL_TRACES_EXPORTER` | `agent_id` / per-span トークン。**同一モデルの custom subagent を分離＋waterfall** |
 
 > 注: 直接 Anthropic API 認証時のみ `claude_code.cost.usage` が機能する。
 > Bedrock / Vertex / Foundry では Claude Code はコストメトリクスを送らない（公式）。

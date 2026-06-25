@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Splunk Observability Cloud に Claude Code エージェント可観測性の
-// ダッシュボード（A/B コスト比較）とディテクタ（コスト超過アラート）を API で作る。
+// ダッシュボード（エージェント/スキル/モデル別コスト + イベント）とディテクタ（コスト超過アラート）を API で作る。
 //
 // 使い方: プロジェクトルートで `node scripts/provision-splunk.mjs`
 //   削除: `node scripts/provision-splunk.mjs --destroy`
@@ -24,7 +24,7 @@ async function api(method, path, body) {
 }
 
 // COUNTER(デルタ)なので rollup='sum' で可視ウィンドウ内を合算して総量表示する
-const chart = (name, program, type = 'TimeSeriesChart', extra = {}) => ({
+const chart = (name, program, type = 'TableChart', extra = {}) => ({
   name,
   programText: program,
   options: { type, ...extra },
@@ -54,31 +54,40 @@ await destroyExisting();
 
 // --- 1) チャート作成 ---
 const charts = {};
+// COUNTER(デルタ)を List で「合計値」表示するため .sum(over='1d') で直近1日の累計にする。
+// 今回の本番ランは run=zenn。テスト用ラン(demo/quality/cost 等)を除くため絞る。
+const F = process.env.CHART_FILTER || "filter('run','zenn')";
 const defs = {
-  abCost: chart(
-    '[Claude Code] A/B 合計コスト by run (USD)',
-    "data('claude_code.cost.usage', rollup='sum').sum(by=['run']).publish(label='cost')",
+  // ① Agentごとのコスト: query_source(main/subagent/auxiliary) × model で実コストを分解。
+  //    main=tech-lead(opus) / subagent=frontend-dev(sonnet)・reviewer/qa(haiku) / auxiliary=補助(haiku)。
+  costByAgent: chart(
+    '[Claude Code] ① Agentごとのコスト (query_source × model, USD)',
+    `data('claude_code.cost.usage', filter=${F}, rollup='sum').sum(by=['query_source','model']).sum(over='1d').publish(label='cost')`,
   ),
-  byAgentModel: chart(
-    '[Claude Code] コスト by agent.name × model',
-    "data('claude_code.cost.usage', rollup='sum').sum(by=['agent.name','model']).publish(label='cost')",
+  // ② Skillごとのコスト: skill.name(verbatim) 別の実コスト。design-system / quality-gate / commit-convention 等。
+  costBySkill: chart(
+    '[Claude Code] ② Skillごとのコスト (skill.name, USD)',
+    `data('claude_code.cost.usage', filter=${F}, rollup='sum').sum(by=['skill.name']).sum(over='1d').publish(label='cost')`,
   ),
-  tokenBySkill: chart(
-    '[Claude Code] トークン by skill.name',
-    "data('claude_code.token.usage', rollup='sum').sum(by=['skill.name']).publish(label='tokens')",
-  ),
+  // ③ Modelごとのコスト: opus / sonnet / haiku 別の実コスト。
   costByModel: chart(
-    '[Claude Code] コスト by model',
-    "data('claude_code.cost.usage', rollup='sum').sum(by=['model']).publish(label='cost')",
+    '[Claude Code] ③ Modelごとのコスト (model, USD)',
+    `data('claude_code.cost.usage', filter=${F}, rollup='sum').sum(by=['model']).sum(over='1d').publish(label='cost')`,
   ),
-  activeByRun: chart(
-    '[Claude Code] active_time by run (sec)',
-    "data('claude_code.active_time.total', rollup='sum').sum(by=['run']).publish(label='active_sec')",
+  // 補助: Skillごとのトークン量(コストと別軸で見たい用)。
+  tokenBySkill: chart(
+    '[Claude Code] Skillごとのトークン (skill.name)',
+    `data('claude_code.token.usage', filter=${F}, rollup='sum').sum(by=['skill.name']).sum(over='1d').publish(label='tokens')`,
   ),
-  costOverTime: chart(
-    '[Claude Code] cost.usage 推移 by run',
-    "data('claude_code.cost.usage', rollup='sum').sum(by=['run']).publish(label='cost/min')",
+  // ④ イベント層: claude_code.api_request を「1リクエスト=1コスト明細」のイベントとして
+  //    タイムライン上に重ねる。events-bridge.mjs が ingest した actor='build-team' のみ表示。
+  //    マーカーをクリックすると cost_usd / model / query_source / tokens が出る。
+  eventsApiRequest: chart(
+    '[Claude Code] ④ イベント: api_request (1リクエスト=1コスト明細)',
+    `A = data('claude_code.cost.usage', filter=${F}, rollup='rate').sum().publish(label='cost rate (/s)')\n` +
+      `B = events(eventType='claude_code.api_request', filter=filter('actor','build-team')).publish(label='api_request')`,
     'TimeSeriesChart',
+    { showEventLines: true },
   ),
 };
 for (const [key, def] of Object.entries(defs)) {
@@ -90,42 +99,41 @@ for (const [key, def] of Object.entries(defs)) {
 // --- 2) ダッシュボードグループ + ダッシュボード ---
 const group = await api('POST', '/v2/dashboardgroup', {
   name: '[Claude Code] Agent Observability',
-  description: 'Claude Code のマルチエージェント開発を OTel で計装し A/B 比較したダッシュボード（コンテスト）',
+  description: 'Claude Code のマルチエージェント開発を OTel で計装したダッシュボード（コンテスト）',
 });
 console.log('group   ', group.id);
 
-// 12カラムグリッドに配置
+// 12カラムグリッドに配置（①②③ + 補助 + ④イベント）
 const layout = [
-  ['abCost', 0, 0, 6, 2],
-  ['byAgentModel', 6, 0, 6, 2],
-  ['tokenBySkill', 0, 2, 6, 2],
-  ['costByModel', 6, 2, 6, 2],
-  ['activeByRun', 0, 4, 6, 2],
-  ['costOverTime', 6, 4, 6, 2],
+  ['costByAgent', 0, 0, 6, 3],
+  ['costBySkill', 6, 0, 6, 3],
+  ['costByModel', 0, 3, 6, 3],
+  ['tokenBySkill', 6, 3, 6, 3],
+  ['eventsApiRequest', 0, 6, 12, 3],
 ];
 const dashboard = await api('POST', '/v2/dashboard', {
-  name: '[Claude Code] A/B コスト & エージェント可観測性',
+  name: '[Claude Code] コスト & エージェント可観測性 (run=zenn)',
   groupId: group.id,
-  description: 'run=quality(opus main) vs run=cost(sonnet main) の実測コストと agent/skill 別内訳',
+  description: '習慣トラッカーを tech-lead(opus main)+frontend-dev/code-reviewer/qa-tester で開発した実測。①Agentごと ②Skillごと ③Modelごと のコスト内訳。',
   charts: layout.map(([k, column, row, width, height]) => ({
     chartId: charts[k], column, row, width, height,
   })),
 });
 console.log('dashboard', dashboard.id);
 
-// --- 3) ディテクタ: 1時間で run のコストが $2 を超えたら警告 ---
+// --- 3) ディテクタ: 直近30分で run=zenn のコストが $0.50 を超えたら警告（記事用に必ず発火する閾値） ---
 const detectorProgram =
-  "A = data('claude_code.cost.usage', rollup='sum').sum(by=['run']).sum(over='1h')\n" +
-  "detect(when(A > 2)).publish('claude-run-cost-over-2usd-1h')";
+  "A = data('claude_code.cost.usage', filter=filter('run','zenn'), rollup='sum').sum(by=['run']).sum(over='30m')\n" +
+  "detect(when(A > 0.5)).publish('claude-run-cost-over-50c-30m')";
 const detector = await api('POST', '/v2/detector', {
-  name: '[Claude Code] run cost > $2 / 1h',
-  description: 'いずれかの run が直近1時間で $2 を超過したらアラート（暴走/高額モデル検知）',
+  name: '[Claude Code] run cost > $0.50 / 30m (run=zenn)',
+  description: 'run=zenn が直近30分で $0.50 を超過したらアラート（暴走/高額モデル検知のデモ。記事スクショ用に発火しやすい閾値）',
   programText: detectorProgram,
   rules: [
     {
-      detectLabel: 'claude-run-cost-over-2usd-1h',
+      detectLabel: 'claude-run-cost-over-50c-30m',
       severity: 'Warning',
-      description: 'Claude Code の run コストが直近1hで $2 超過',
+      description: 'Claude Code の run=zenn コストが直近30mで $0.50 超過',
       notifications: [],
     },
   ],

@@ -1,17 +1,57 @@
-# Splunk へ送信されたテレメトリの実サンプル（PII 伏字化済み）
-# project=otel-webapp / Claude Code 2.1.187 / Collector v0.154.2
-# user.email/id, organization.id, session.id, OSユーザーパスは <redacted> 化。
+# Splunk へ送信されたテレメトリの実サンプル（run=zenn / PII 伏字化済み）
+# project=otel-webapp / run=zenn / Claude Code 2.1.191 / Collector v0.154.2
+# user.id / session.id / organization.id / user.email / user.account_* は <redacted> 化。
 # file_path=[redacted-path] / user_prompt=<REDACTED> は Collector の attributes/scrub と Claude Code 側の伏字化による。
+# （取得: traces/metrics パイプラインに debug exporter を一時追加して捕捉 → 元に戻した）
 
-## メトリクス (signalfx exporter 経由)
-/usr/bin/bash: line 8: cd: collector: No such file or directory
+## メトリクス (signalfx exporter 経由) — claude_code.cost.usage の 1 データ点
 
-## トレース span (otlp_http→Splunk APM 経由 / cost ランの抜粋)
-claude_code.llm_request 3594862a51de49e63ebf9192f8cc8b99 99e27b85991b54d7 project=otel-webapp run=quality user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=llm_request model=claude-opus-4-8 gen_ai.system=anthropic gen_ai.request.model=claude-opus-4-8 llm_request.context=interaction speed=normal duration_ms=1774 input_tokens=2996 output_tokens=3 cache_read_tokens=11447 cache_creation_tokens=2187 success=true attempt=1 request_id=req_011CcMtpga3Udans3BgGq9tx gen_ai.response.id=req_011CcMtpga3Udans3BgGq9tx client_request_id=5fa4308e-7388-48df-bfd7-b1587f92b1ee ttft_ms=1648 stop_reason=end_turn gen_ai.response.finish_reasons=["end_turn"]
-claude_code.interaction 3594862a51de49e63ebf9192f8cc8b99 868417b4862f56bc project=otel-webapp run=quality user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=interaction user_prompt=<REDACTED> user_prompt_length=14 interaction.sequence=1 interaction.duration_ms=1911
-claude_code.llm_request 6557aabe5b852176d439929d21f83816 112f39b99b699341 project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=llm_request model=claude-haiku-4-5-20251001 gen_ai.system=anthropic gen_ai.request.model=claude-haiku-4-5-20251001 llm_request.context=interaction speed=normal duration_ms=1500 input_tokens=730 output_tokens=24 cache_read_tokens=0 cache_creation_tokens=0 success=true attempt=1 request_id=req_011CcMyty9t2XekvqbNE9mcG gen_ai.response.id=req_011CcMyty9t2XekvqbNE9mcG client_request_id=20a04e91-074e-41fd-93dd-b8c8a73f2f32 ttft_ms=1210 stop_reason=end_turn gen_ai.response.finish_reasons=["end_turn"]
-claude_code.tool.blocked_on_user 6557aabe5b852176d439929d21f83816 434ec46d44be102d project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=tool.blocked_on_user duration_ms=19 decision=unknown source=unknown
-claude_code.tool.execution 6557aabe5b852176d439929d21f83816 b550c6ad44bf44f7 project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=tool.execution tool_use_id=toolu_01VS6sAhyu9uYfQfK5eqrLUX gen_ai.tool.call.id=toolu_01VS6sAhyu9uYfQfK5eqrLUX duration_ms=10 success=false error=File does not exist. Note: your current working directory is C:\Users\<user>\claude\splunk-otel-contest.
-claude_code.tool 6557aabe5b852176d439929d21f83816 0e3bc211c6ecd790 project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=tool tool_name=Read file_path=[redacted-path] tool_use_id=toolu_01VS6sAhyu9uYfQfK5eqrLUX gen_ai.tool.call.id=toolu_01VS6sAhyu9uYfQfK5eqrLUX duration_ms=30
-claude_code.llm_request 6557aabe5b852176d439929d21f83816 ad6aca5444fab218 project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=llm_request model=claude-sonnet-4-6 gen_ai.system=anthropic gen_ai.request.model=claude-sonnet-4-6 llm_request.context=interaction speed=normal duration_ms=3503 input_tokens=3 output_tokens=97 cache_read_tokens=0 cache_creation_tokens=11519 success=true attempt=1 request_id=req_011CcMytzL5NmrMPcEcmHuYP gen_ai.response.id=req_011CcMytzL5NmrMPcEcmHuYP client_request_id=ccc516d4-088a-464d-b708-24379869f49b ttft_ms=2609 stop_reason=tool_use gen_ai.response.finish_reasons=["tool_use"]
-claude_code.tool.blocked_on_user 6557aabe5b852176d439929d21f83816 767d0f514ecc9d81 project=otel-webapp run=cost user.id=<redacted> session.id=<redacted> organization.id=<redacted> user.email=<redacted> user.account_uuid=<redacted> user.account_id=<redacted> terminal.type=vscode span.type=tool.blocked_on_user duration_ms=3 decision=unknown source=unknown
+Metric
+  -> Name: claude_code.cost.usage
+  -> Description: Cost of the Claude Code session
+  -> Unit: USD
+  -> DataType: Sum   (IsMonotonic: true / AggregationTemporality: Delta)  ← COUNTER(デルタ)
+NumberDataPoints #0
+  Value: 0.052599
+  Data point attributes:
+     -> project: Str(otel-webapp)
+     -> run: Str(zenn)
+     -> model: Str(claude-opus-4-8)
+     -> query_source: Str(main)
+     -> user.id / session.id / organization.id / user.email / user.account_*: <redacted>
+
+## トレース span (otlp_http→Splunk APM 経由 / run=zenn の抜粋)
+
+# llm_request スパン（モデル呼び出し1本ぶんのトークン・所要時間・request_id を持つ。cost_usd は持たない）
+Span  claude_code.llm_request
+  Trace ID: 788c4892a3bc461a561cf8cd8645a6f0
+  Span ID:  5e9f9d2a290e5511
+  Attributes:
+     -> project: Str(otel-webapp)   run: Str(zenn)   terminal.type: Str(vscode)
+     -> span.type: Str(llm_request)
+     -> model: Str(claude-haiku-4-5-20251001)
+     -> gen_ai.system: Str(anthropic)   gen_ai.request.model: Str(claude-haiku-4-5-20251001)
+     -> llm_request.context: Str(interaction)   speed: Str(normal)
+     -> duration_ms: Int(1268)
+     -> input_tokens: Int(514)   output_tokens: Int(15)
+     -> cache_read_tokens: Int(0)   cache_creation_tokens: Int(0)
+     -> success: Bool(true)   attempt: Int(1)
+     -> request_id: Str(req_011CcPm23sLQXisCj5715kih)        <- イベント層 api_request.request_id と join 可
+     -> ttft_ms: Int(1226)   stop_reason: Str(end_turn)
+     -> user.id / session.id / organization.id / user.email / user.account_*: <redacted>
+
+# tool スパン（Edit / Bash などのツール実行。OTEL_LOG_TOOL_DETAILS=1 で詳細が付く）
+Span  claude_code.tool
+  Trace ID: 94a7ce3f3a0db0f343b040e2a5bdee27
+  Span ID:  503572cf3a94443c
+  Attributes:
+     -> project: Str(otel-webapp)   run: Str(zenn)
+     -> span.type: Str(tool)
+     -> tool_name: Str(Edit)
+     -> file_path: Str([redacted-path])     <- Collector の attributes/scrub で伏字化
+     -> duration_ms: Int(104)
+     -> user.id / session.id / organization.id / user.email / user.account_*: <redacted>
+
+# 同じ Trace ID(94a7ce…) の下に llm_request / tool が複数ぶら下がり、1 指示のネストした
+# waterfall を構成する。llm_request の agent_id / tool の subagent_type で、
+# 同一モデルの custom サブエージェント(code-reviewer / qa-tester)も別スパンとして分離できる。

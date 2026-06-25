@@ -15,6 +15,11 @@ processors:
     actions:
       - { key: tool.arguments, action: delete }
       - { key: full_command, action: delete }
+      # イベント(logs)を Splunk Event Feed に流すため、コマンド/パス/プロンプトを含む
+      # 自由記述キーも削除する（公開スクショ向けの伏字化）。
+      - { key: tool_input, action: delete }
+      - { key: tool_parameters, action: delete }
+      - { key: user_prompt, action: delete }
       - { key: file_path, action: update, value: "[redacted-path]" }
 exporters:
   # sapm は新しめの Splunk OTel Collector で廃止されたため、
@@ -34,4 +39,6 @@ service:
   pipelines:
     traces:  { receivers: [otlp], processors: [redaction/secrets, attributes/scrub, batch], exporters: [otlp_http/splunk] }
     metrics: { receivers: [otlp], processors: [batch], exporters: [signalfx] }
-    logs:    { receivers: [otlp], processors: [redaction/secrets, attributes/scrub, batch], exporters: [debug] }
+    # logs(イベント層)は debug(手元確認用) に加えて signalfx へ流し、
+    # claude_code.api_request 等を Splunk Observability の Event Feed に着弾させる。
+    logs:    { receivers: [otlp], processors: [redaction/secrets, attributes/scrub, batch], exporters: [debug, signalfx] }

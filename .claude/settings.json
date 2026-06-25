@@ -10,6 +10,6 @@
     "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
     "OTEL_LOG_TOOL_DETAILS": "1",
     "OTEL_METRIC_EXPORT_INTERVAL": "10000",
-    "OTEL_RESOURCE_ATTRIBUTES": "project=otel-webapp,run=quality"
+    "OTEL_RESOURCE_ATTRIBUTES": "project=otel-webapp,run=zenn"
   }
 }
