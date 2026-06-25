@@ -48,8 +48,7 @@ splunk-otel-contest/
   collector/{docker-compose.yml,config.yaml,.env.example}
   target-app/                    # エージェントが生成（品質ラン）
   target-app-cost/               # エージェントが生成（コスパラン）
-  captures/                      # Splunk スクショ・計測データ
-  docs/{spec.md,article-draft.md}
+  captures/                      # Splunk 計測データ（A/B集計・トレース/イベントの実サンプル）
 ```
 
 ## セットアップ
@@ -78,7 +77,7 @@ claude -p "1+1は?"
 **品質ラン**（opus）:
 ```bash
 # settings.json: run=quality / tech-lead.md: model: opus
-claude --agent tech-lead "docs/spec.md に従って習慣トラッカーを実装して。\
+claude --agent tech-lead "習慣トラッカーを実装して。\
 計画→実装(frontend-dev)→レビュー(code-reviewer)→テスト(qa-tester)→/quality-gate→コミット まで通して。"
 ```
 
